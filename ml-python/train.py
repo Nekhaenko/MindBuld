@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+
+import json
+import pprint
+import pandas as pd
+from scipy import sparse
+# from sklearn.linear_model import LinearRegression
+from joblib import dump, load
+from os import listdir
+import os
+import pandas as pd
+# import json
+# import os
+import pickle
+from scipy.sparse import csr_matrix
+import numpy as np
+import itertools
+import math
+# from lightfm.cross_validation import random_train_test_split
+# from lightfm.evaluation import auc_score, precision_at_k, recall_at_k
+from lightfm import LightFM
+# from skopt import forest_minimize
+
+PATHS = {
+    'hyperparameters': 'input/config/hyperparameters.json',
+    'input': 'input/config/inputdataconfig.json',
+    'config': 'input/config/config.json',
+    'data': 'input/data/',
+    'model': 'model/'
+}
+
+
+with open('opt/ml/input/config/config.json') as f:
+    config = json.load(f)
+
+levels = config['levels']
+priority = config['priority']
+
+
+def read_user_data(priority):
+    print('-read_user_data-', os.listdir('opt/ml/input/data/train'))
+    File_name = 'opt/ml/input/data/train/studentAnalytics2.json'
+    with open(File_name) as json_file:
+        data = json.load(json_file)
+
+    user_scored_answers = dict()
+
+    for item in data.items():
+        if item[0] == 'allQuestionStats':
+            lst = item[1]
+    for i in lst:
+        if i['questionText'] != 'Game began':
+            user_scored_answers[i['questionText'].replace('R U ', '').replace('?', '')] = i['userAnswered']
+
+    user_scored_level = {k: ('high' if v == '4' or v == '5' else 'medium' if v == '3' else 'low')
+                  for (k, v) in user_scored_answers.items()}
+
+    if int(user_scored_answers['Coping']) <= 3:
+        priority.remove('Coping')
+        priority = ['Coping'] + priority
+    elif int(user_scored_answers['Safe']) <= 3:
+        priority.remove('Safe')
+        priority = ['Safe'] + priority
+
+    return priority, user_scored_level
+
+
+def get_path(key):
+    mypath = os.path.join('opt/ml/', PATHS[key])
+    return mypath
+
+
+def load_json(target_file):
+    output = None
+    
+    with open(target_file) as json_data:
+        output = json.load(json_data)
+
+    return output
+
+
+def print_json(target_json):
+    pprint.pprint(target_json, indent=4)
+
+
+def inspect_hyperparameters():
+    print('[inspect_hyperparameters]')
+    hyperparameters_json_path = get_path('hyperparameters')
+    print(hyperparameters_json_path)
+    
+    hyperparameters = load_json(hyperparameters_json_path)
+    print_json(hyperparameters)
+    
+    
+def list_dir_contents(target_path):
+    print('[list_dir_contents]')
+    
+    output = listdir(target_path)
+    print(output)
+    
+    return output
+
+
+def inspect_input():
+    print('[inspect_input]')
+    input_config_json_path = get_path('input')
+    print(input_config_json_path)
+    
+    input_config = load_json(input_config_json_path)
+    print_json(input_config)
+    
+    
+def load_training_data(input_data_dir):
+    print('[load_training_data]')
+    interactions = pd.read_csv('opt/ml/input/data/train/interactions.csv')
+    
+    user_interaction = pd.pivot_table(interactions, 
+                                  index='user_id', 
+                                  columns='quest_id', values='rating')
+
+    user_interaction = user_interaction.fillna(0)
+    user_interaction_csr = csr_matrix(user_interaction.values)
+    user_id = list(user_interaction.index)
+    user_dict = {}
+    counter = 0 
+    for i in user_id:
+        user_dict[i] = counter
+        counter += 1
+
+    return user_interaction
+    
+    
+def get_input_data_dir():
+    print('[get_input_data_dir]')
+    key = 'train'
+    input_data_dir = get_path('data') + key + '/'
+    
+    return input_data_dir
+
+
+def train_model(user_interaction_csr):
+    print('[train_model]')
+    model = LightFM(loss='warp',
+                random_state=2016,
+                learning_rate=0.90,
+                no_components=150,
+                user_alpha=0.000005)
+
+    model = model.fit(user_interaction_csr,
+                epochs=100,
+                num_threads=16, verbose=False)
+    
+    return model
+
+
+def save_model(model):
+    print('[save_model]')
+    filename = get_path('model') + 'model'
+    print(filename)
+    dump(model, filename)
+    
+    print('Model Saved!')
+
+
+def main():
+    inspect_hyperparameters()
+    inspect_input()
+    
+    input_data_dir = get_input_data_dir()
+    print(input_data_dir)
+    levels = config['levels']
+    priority = config['priority']
+    priority, user_scored_level = read_user_data(priority)
+
+    user_interaction_csr = load_training_data(input_data_dir)
+    model = train_model(user_interaction_csr)
+    save_model(model)
+    
+    
+if __name__ == "__main__":
+    main()
