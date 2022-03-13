@@ -38,7 +38,6 @@ priority = config['priority']
 
 
 def read_user_data(priority):
-    print('-read_user_data-', os.listdir('opt/ml/input/data/train'))
     File_name = 'opt/ml/input/data/train/studentAnalytics2.json'
     with open(File_name) as json_file:
         data = json.load(json_file)
@@ -104,7 +103,6 @@ def list_dir_contents(target_path):
 def inspect_input():
     print('[inspect_input]')
     input_config_json_path = get_path('input')
-    print(input_config_json_path)
     
     input_config = load_json(input_config_json_path)
     print_json(input_config)
@@ -127,7 +125,7 @@ def load_training_data(input_data_dir):
         user_dict[i] = counter
         counter += 1
 
-    return user_interaction
+    return user_interaction_csr
     
     
 def get_input_data_dir():
@@ -156,7 +154,7 @@ def train_model(user_interaction_csr):
 def save_model(model):
     print('[save_model]')
     filename = get_path('model') + 'model'
-    print(filename)
+    # print(filename)
     dump(model, filename)
     
     print('Model Saved!')
