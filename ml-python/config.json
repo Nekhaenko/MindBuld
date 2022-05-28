@@ -1,0 +1,4 @@
+{
+    "levels": {"1": "low", "2": "medium", "3": "high"},
+    "priority": ["Hopeful", "Happy", "Coping", "Accepted", "Safe", "Healthy"]
+}

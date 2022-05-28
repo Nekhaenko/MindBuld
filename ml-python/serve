@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-
+from scipy.sparse import csr_matrix
 from flask import Flask
 from flask import Response
-from flask import request
-
+from flask import request, jsonify
+import pandas as pd
 from joblib import dump, load
 
 app = Flask(__name__)
@@ -32,18 +32,39 @@ def load_model():
     return model
 
 
-@app.route("/invocations", methods=["POST"])
+def load_training_data():
+    interactions = pd.read_csv('/opt/ml/input/data/train/interactions.csv')
+    
+    user_interaction = pd.pivot_table(interactions, 
+                                  index='user_id', 
+                                  columns='quest_id', values='rating')
+
+    user_interaction = user_interaction.fillna(0)
+    
+    user_id = list(user_interaction.index)
+    user_dict = {}
+    counter = 0 
+    
+    for i in user_id:
+        user_dict[i] = counter
+        counter += 1
+
+    return user_interaction, user_dict
+
+
+@app.route("/predict", methods=["POST"])
 def predict():
+    
     model = load_model()
+    post_body = request.json
     
-    post_body = request.get_data().decode("utf-8")
+    user_id = post_body['user_id']
+    n_items=post_body['n_items']
     
-    payload_value = float(post_body)
+    scores = model.predict(user_id, np.arange(n_items))
     
-    X_test = np.array([payload_value]).reshape(-1, 1)
-    y_test = model.predict(X_test)
-    
-    return Response(response=str(y_test[0]), status=200)
+    scores = jsonify(scores.tolist())
+    return Response(response= scores, status=200)
 
 
 @app.route("/ping")

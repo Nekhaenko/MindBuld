@@ -24,13 +24,13 @@ from lightfm import LightFM
 PATHS = {
     'hyperparameters': 'input/config/hyperparameters.json',
     'input': 'input/config/inputdataconfig.json',
-    'config': 'input/config/config.json',
+    #'config': 'input/config/config.json',
     'data': 'input/data/',
     'model': 'model/'
 }
 
 
-with open('opt/ml/input/config/config.json') as f:
+with open('/var/tmp/config.json') as f:
     config = json.load(f)
 
 levels = config['levels']
@@ -38,7 +38,7 @@ priority = config['priority']
 
 
 def read_user_data(priority):
-    File_name = 'opt/ml/input/data/train/studentAnalytics2.json'
+    File_name = '/opt/ml/input/data/train/studentAnalytics2.json'
     with open(File_name) as json_file:
         data = json.load(json_file)
 
@@ -65,7 +65,7 @@ def read_user_data(priority):
 
 
 def get_path(key):
-    mypath = os.path.join('opt/ml/', PATHS[key])
+    mypath = os.path.join('/opt/ml/', PATHS[key])
     return mypath
 
 
@@ -110,7 +110,7 @@ def inspect_input():
     
 def load_training_data(input_data_dir):
     print('[load_training_data]')
-    interactions = pd.read_csv('opt/ml/input/data/train/interactions.csv')
+    interactions = pd.read_csv('/opt/ml/input/data/train/interactions.csv')
     
     user_interaction = pd.pivot_table(interactions, 
                                   index='user_id', 
